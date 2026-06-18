@@ -35,12 +35,24 @@ interface Props {
   isMock: boolean
   taskType: string
   routeChain: string[]
+  artifacts?: { ics?: { filename: string; content: string } }
   onClose: () => void
   onExport?: (type: 'markdown' | 'json' | 'copy') => void
 }
 
-export default function OutputPanel({ content, isMock, taskType, routeChain, onClose, onExport }: Props) {
+export default function OutputPanel({ content, isMock, taskType, routeChain, artifacts, onClose, onExport }: Props) {
   const [copied, setCopied] = useState(false)
+
+  const handleIcsDownload = () => {
+    if (!artifacts?.ics) return
+    const blob = new Blob([artifacts.ics.content], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = artifacts.ics.filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const handleCopy = async () => {
     await copyToClipboard(content)
@@ -88,7 +100,16 @@ export default function OutputPanel({ content, isMock, taskType, routeChain, onC
       />
 
       {/* actions */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-hairline">
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-hairline flex-wrap">
+        {artifacts?.ics && (
+          <button
+            onClick={handleIcsDownload}
+            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full text-white transition-colors"
+            style={{ background: '#7d9c57' }}
+          >
+            📅 下载日历(.ics)
+          </button>
+        )}
         <button
           onClick={handleCopy}
           className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full transition-colors"

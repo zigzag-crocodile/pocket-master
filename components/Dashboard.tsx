@@ -38,7 +38,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
   const [helperName, setHelperName] = useState<string>()
   const [isMock, setIsMock] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [output, setOutput] = useState<{ content: string; taskType: string; routeChain: string[]; isMock: boolean } | null>(null)
+  const [output, setOutput] = useState<{ content: string; taskType: string; routeChain: string[]; isMock: boolean; artifacts?: { ics?: { filename: string; content: string } } } | null>(null)
   const [pendingTask, setPendingTask] = useState<PendingTask | null>(null)
   const supaMode = isSupabaseConfigured()
   const [repairLogs, setRepairLogs] = useState<RepairLog[]>(supaMode ? [] : mockData.repair_logs)
@@ -125,10 +125,13 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     await delay(500)
 
     try {
+      const enabledHelpers = agents
+        .filter((a) => a.is_enabled)
+        .map((a) => ({ id: a.id, name: a.name, description: a.description }))
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, permissionScope }),
+        body: JSON.stringify({ input, permissionScope, enabledHelpers }),
       })
       const data = await res.json()
 
@@ -179,7 +182,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
         await delay(500)
       }
 
-      setOutput({ content: data.output, taskType: data.taskType, routeChain: data.routeChain, isMock: data.isMock })
+      setOutput({ content: data.output, taskType: data.taskType, routeChain: data.routeChain, isMock: data.isMock, artifacts: data.artifacts })
       // mock 任务停留在 mock 情绪（吉祥物呈现"困倦/创可贴"造型），真实任务停在完成
       setAgentStatus(data.isMock ? 'mock_mode' : 'completed')
 
@@ -292,6 +295,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
             isMock={output.isMock}
             taskType={output.taskType}
             routeChain={output.routeChain}
+            artifacts={output.artifacts}
             onClose={() => setOutput(null)}
             onExport={(type) => { if (supaMode) recordExport(output.taskType, type).then(refreshLedger) }}
           />
