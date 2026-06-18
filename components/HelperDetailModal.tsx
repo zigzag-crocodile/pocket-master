@@ -16,7 +16,7 @@ export default function HelperDetailModal({ agent, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-5" style={{ background: 'rgba(53,56,47,0.32)', backdropFilter: 'blur(3px)' }} onClick={onClose}>
       <div
-        className="w-full max-w-lg bg-card rounded-3xl shadow-lift pop-in"
+        className="w-full max-w-md bg-card rounded-3xl shadow-lift pop-in"
         style={{ maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
         onClick={(e) => e.stopPropagation()}
       >
