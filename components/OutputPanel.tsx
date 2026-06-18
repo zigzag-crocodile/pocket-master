@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { downloadMarkdown, downloadJSON, copyToClipboard } from '@/lib/export'
+import { downloadMarkdown, copyToClipboard } from '@/lib/export'
 
 function renderMarkdown(md: string): string {
   return md
@@ -67,10 +67,6 @@ export default function OutputPanel({ content, isMock, taskType, routeChain, art
     downloadMarkdown(content, `pocket-master-${taskType}`)
     onExport?.('markdown')
   }
-  const handleJSONExport = () => {
-    downloadJSON({ taskType, routeChain, isMock, content, exportedAt: new Date().toISOString() }, `pocket-master-${taskType}`)
-    onExport?.('json')
-  }
 
   return (
     <div className="bg-card rounded-3xl shadow-card overflow-hidden rise">
@@ -119,22 +115,29 @@ export default function OutputPanel({ content, isMock, taskType, routeChain, art
             className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full transition-colors"
             style={{ background: '#f5f8f0', color: '#6b8a48' }}
           >
-            📅 下载.ics
+            📅 .ics
           </button>
         )}
-        <button
-          onClick={handleCopy}
-          className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full transition-colors"
-          style={{ background: copied ? '#e9f3e2' : '#f5f8f0', color: copied ? '#6fae5a' : '#6b8a48' }}
-        >
-          {copied ? '已复制 ✓' : '复制'}
-        </button>
-        <button onClick={handleMarkdownExport} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full bg-canvas text-sub hover:text-ink transition-colors">
-          导出 Markdown
-        </button>
-        <button onClick={handleJSONExport} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full bg-canvas text-sub hover:text-ink transition-colors">
-          导出 JSON
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {/* 复制图标 */}
+          <button
+            onClick={handleCopy}
+            aria-label="复制"
+            title={copied ? '已复制' : '复制'}
+            className="w-9 h-9 flex items-center justify-center rounded-full transition-colors"
+            style={{ background: copied ? '#e9f3e2' : '#f5f8f0', color: copied ? '#6fae5a' : '#6b8a48' }}
+          >
+            {copied ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+            )}
+          </button>
+          {/* 导出 Markdown 小按钮 */}
+          <button onClick={handleMarkdownExport} className="text-[12px] font-medium px-3 py-1.5 rounded-full bg-canvas text-sub hover:text-ink transition-colors">
+            导出 .md
+          </button>
+        </div>
       </div>
     </div>
   )

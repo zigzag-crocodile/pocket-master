@@ -17,9 +17,10 @@ const CATEGORY_EMOJI: Record<string, string> = {
 interface Props {
   installedIds: string[]
   onInstall: (template: MarketplaceTemplate) => void
+  onBack: () => void
 }
 
-export default function MarketplacePanel({ installedIds, onInstall }: Props) {
+export default function MarketplacePanel({ installedIds, onInstall, onBack }: Props) {
   const [category, setCategory] = useState('全部')
   const [search, setSearch] = useState('')
   const [detail, setDetail] = useState<MarketplaceTemplate | null>(null)
@@ -32,6 +33,11 @@ export default function MarketplacePanel({ installedIds, onInstall }: Props) {
 
   return (
     <div className="px-4 py-4">
+      {/* 返回我的小帮手 */}
+      <button onClick={onBack} className="flex items-center gap-1 text-[13px] text-sub hover:text-ink transition-colors mb-3">
+        <span className="text-[15px]">‹</span> 返回我的小帮手
+      </button>
+
       {/* search */}
       <div className="flex items-center gap-2 px-4 py-2.5 mb-3 bg-card rounded-full shadow-card">
         <span className="text-faint">🔍</span>

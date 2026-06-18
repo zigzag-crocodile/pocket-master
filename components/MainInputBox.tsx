@@ -141,7 +141,7 @@ export default function MainInputBox({ onSubmit, disabled }: Props) {
 
   return (
     <>
-      <div className="bg-card rounded-3xl shadow-card px-2 py-2 transition-shadow focus-within:shadow-soft">
+      <div className="rounded-3xl shadow-card px-2 py-2 transition-shadow focus-within:shadow-soft" style={{ background: '#eef4e6' }}>
         {note && <div className="text-[11.5px] text-bad px-3 mb-1">{note}</div>}
 
         {attached && (

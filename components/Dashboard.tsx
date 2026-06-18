@@ -306,7 +306,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
   const unfixedCount = repairLogs.filter((r) => !r.fixed).length
 
   return (
-    <div className="max-w-md mx-auto min-h-screen flex flex-col bg-canvas">
+    <div className="max-w-md mx-auto min-h-screen flex flex-col bg-white">
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2">
@@ -361,8 +361,8 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
       )}
 
       {/* Tab navigation — clean text tabs */}
-      <div className="flex mx-4 mt-4 sticky top-0 z-10 bg-canvas border-b border-hairline">
-        {(['我的小帮手', '帮手集市', '日程', '修理室'] as Tab[]).map((tab, i) => {
+      <div className="flex mx-4 mt-4 sticky top-0 z-10 bg-white border-b border-hairline">
+        {(['我的小帮手', '日程', '修理室'] as Tab[]).map((tab, i) => {
           const active = activeTab === tab
           return (
             <div key={tab} className="flex-1 flex items-center justify-center relative">
@@ -396,8 +396,8 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto pb-6">
-        {activeTab === '我的小帮手' && <MyHelpersPanel agents={agents} onAgentsChange={updateAgents} />}
-        {activeTab === '帮手集市' && <MarketplacePanel installedIds={installedIds} onInstall={handleInstall} />}
+        {activeTab === '我的小帮手' && <MyHelpersPanel agents={agents} onAgentsChange={updateAgents} onOpenMarketplace={() => setActiveTab('帮手集市')} />}
+        {activeTab === '帮手集市' && <MarketplacePanel installedIds={installedIds} onInstall={handleInstall} onBack={() => setActiveTab('我的小帮手')} />}
         {activeTab === '日程' && <SchedulePanel todos={todos} onAdd={addTodoH} onUpdate={updateTodoH} onDelete={deleteTodoH} />}
         {activeTab === '修理室' && (
           <RepairRoom

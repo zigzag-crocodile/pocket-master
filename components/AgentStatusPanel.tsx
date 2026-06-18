@@ -43,64 +43,52 @@ export default function AgentStatusPanel({ status, routeText, helperName, isMock
   const doubledRoute = `${routeText}　　•　　${routeText}　　•　　`
 
   return (
-    <div className="bg-card rounded-3xl shadow-card px-5 pt-5 pb-3 rise">
-      {/* character + bubble */}
-      <div className="flex items-center gap-4">
-        <div className="shrink-0 relative" style={{ width: 104, height: 104 }}>
-          <div
-            className="absolute inset-0 rounded-full"
-            style={{ background: 'radial-gradient(circle at 50% 45%, rgba(125,156,87,0.14), rgba(125,156,87,0) 70%)' }}
-          />
-          <div className="relative flex items-center justify-center w-full h-full">
-            <CharacterAvatar status={status} size={104} />
-          </div>
-        </div>
+    <div className="bg-card rounded-3xl shadow-card px-5 pt-5 pb-4 rise flex flex-col items-center text-center">
+      {/* 中断按钮（右上角） */}
+      {isActive && onInterrupt && (
+        <button
+          onClick={onInterrupt}
+          className="self-end -mt-1 text-[11px] px-2.5 py-1 rounded-full text-bad font-medium transition-colors hover:bg-badsoft"
+        >
+          中断
+        </button>
+      )}
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[13.5px] font-semibold text-ink">小当家</span>
-            <span
-              className="text-[11px] px-2 py-0.5 rounded-full font-medium"
-              style={{ color: cfg.tone, background: `${cfg.tone}1f` }}
-            >
-              {cfg.chip}
-            </span>
-            {isMock && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-medium text-mock" style={{ background: '#f4eede' }}>
-                Mock
-              </span>
-            )}
-            {isActive && onInterrupt && (
-              <button
-                onClick={onInterrupt}
-                className="ml-auto text-[11px] px-2.5 py-1 rounded-full text-bad font-medium transition-colors hover:bg-badsoft"
-              >
-                中断
-              </button>
-            )}
-          </div>
-
-          {/* speech bubble */}
-          <div className="relative bg-brand-mist rounded-2xl rounded-tl-md px-3.5 py-2.5">
-            <p className="text-[13px] leading-relaxed" style={{ color: '#5b5f50' }}>
-              {displayText}
-              {isActive && <DotsLoader />}
-            </p>
-          </div>
+      {/* 居中放大的小当家 */}
+      <div className="relative" style={{ width: 150, height: 150 }}>
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{ background: 'radial-gradient(circle at 50% 45%, rgba(125,156,87,0.16), rgba(125,156,87,0) 70%)' }}
+        />
+        <div className="relative flex items-center justify-center w-full h-full">
+          <CharacterAvatar status={status} size={150} />
         </div>
       </div>
 
-      {/* floating route chain (hidden while idle) */}
+      {/* 名字 + 状态 chip */}
+      <div className="flex items-center justify-center gap-2 mt-1">
+        <span className="text-[14px] font-semibold text-ink">小当家</span>
+        <span className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ color: cfg.tone, background: `${cfg.tone}1f` }}>
+          {cfg.chip}
+        </span>
+        {isMock && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium text-mock" style={{ background: '#f4eede' }}>
+            Mock
+          </span>
+        )}
+      </div>
+
+      {/* 一行状态文字 */}
+      <p className="text-[13px] leading-relaxed mt-1.5 px-2" style={{ color: '#5b5f50' }}>
+        {displayText}
+        {isActive && <DotsLoader />}
+      </p>
+
+      {/* 执行链路（非 idle 时） */}
       {!isIdle && (
-        <div className="mt-3.5 pt-3 border-t border-hairline overflow-hidden">
-          <div className="flex items-center gap-2 text-[11px] text-faint mb-1.5">
-            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: cfg.tone }} />
-            执行链路
-          </div>
-          <div className="overflow-hidden">
-            <div className="marquee-track text-[12px]" style={{ color: '#9aa08c' }}>
-              <span>{doubledRoute}</span>
-            </div>
+        <div className="w-full mt-3 pt-3 border-t border-hairline overflow-hidden">
+          <div className="marquee-track text-[12px]" style={{ color: '#9aa08c' }}>
+            <span>{doubledRoute}</span>
           </div>
         </div>
       )}

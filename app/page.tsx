@@ -80,7 +80,7 @@ export default function Home() {
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-canvas">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-sub text-[13px]">载入中…</div>
       </div>
     )
@@ -89,7 +89,7 @@ export default function Home() {
   if (sessionEmail) return <Dashboard userEmail={sessionEmail} onSignOut={handleSignOut} />
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-5 bg-canvas">
+    <div className="min-h-screen flex items-center justify-center px-5 bg-white">
       <div className="w-full max-w-xs">
         {/* mascot + brand */}
         <div className="flex flex-col items-center mb-7">

@@ -42,9 +42,9 @@ module.exports = {
         '3xl': '28px',
       },
       boxShadow: {
-        card: '0 2px 14px rgba(53,56,47,0.05), 0 1px 3px rgba(53,56,47,0.04)',
-        lift: '0 10px 32px rgba(53,56,47,0.10), 0 2px 8px rgba(53,56,47,0.05)',
-        soft: '0 4px 18px rgba(53,56,47,0.06)',
+        card: '0 2px 16px rgba(53,56,47,0.08), 0 1px 4px rgba(53,56,47,0.06)',
+        lift: '0 12px 34px rgba(53,56,47,0.13), 0 2px 8px rgba(53,56,47,0.06)',
+        soft: '0 4px 20px rgba(53,56,47,0.08)',
         brand: '0 8px 24px rgba(125,156,87,0.28)',
         inset: 'inset 0 1px 2px rgba(53,56,47,0.04)',
       },
