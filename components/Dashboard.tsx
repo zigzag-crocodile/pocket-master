@@ -7,11 +7,12 @@ import MarketplacePanel from '@/components/MarketplacePanel'
 import RepairRoom from '@/components/RepairRoom'
 import OutputPanel from '@/components/OutputPanel'
 import PermissionModal from '@/components/PermissionModal'
+import SchedulePanel from '@/components/SchedulePanel'
 import { mockData, SubAgent, MarketplaceTemplate, RepairLog } from '@/data/mock_data'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import { loadSubagents, upsertSubagents, recordRun, recordRepair, recordExport, loadRepairLogs, computeLedger, AgentRow, LedgerData } from '@/lib/db'
+import { loadSubagents, upsertSubagents, recordRun, recordRepair, recordExport, loadRepairLogs, computeLedger, appendHelperMemory, loadTodos, addTodo, updateTodo, deleteTodo, Todo, AgentRow, LedgerData } from '@/lib/db'
 
-type Tab = '我的小帮手' | '帮手集市' | '修理室'
+type Tab = '我的小帮手' | '帮手集市' | '日程' | '修理室'
 
 interface AgentWithStatus extends SubAgent {
   status: string
@@ -46,6 +47,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     supaMode ? [] : mockData.installed_subagents.map((a) => ({ ...a }))
   )
   const [ledger, setLedger] = useState<LedgerData | null>(null)
+  const [todos, setTodos] = useState<Todo[]>([])
 
   const installedIds = agents.map((a) => a.id)
 
@@ -54,14 +56,53 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     if (!supaMode) return
     let active = true
     ;(async () => {
-      const [subs, logs, led] = await Promise.all([loadSubagents(), loadRepairLogs(), computeLedger()])
+      const [subs, logs, led, tds] = await Promise.all([loadSubagents(), loadRepairLogs(), computeLedger(), loadTodos()])
       if (!active) return
       if (subs) setAgents(subs)
       if (logs) setRepairLogs(logs)
       if (led) setLedger(led)
+      if (tds) setTodos(tds)
     })()
     return () => { active = false }
   }, [supaMode])
+
+  // 待办 CRUD（supaMode 写库，demo 仅内存）
+  const addTodoH = useCallback(async (t: Partial<Todo>) => {
+    if (supaMode) {
+      const row = await addTodo(t)
+      if (row) setTodos((prev) => [row, ...prev])
+    } else {
+      const local: Todo = { id: `todo_${Date.now()}`, title: t.title || '待办', due_date: t.due_date || null, due_time: t.due_time || null, location: t.location || null, notes: t.notes || null, done: false, source: t.source || 'manual', created_at: new Date().toISOString() }
+      setTodos((prev) => [local, ...prev])
+    }
+  }, [supaMode])
+
+  const updateTodoH = useCallback((id: string, patch: Partial<Todo>) => {
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+    if (supaMode) updateTodo(id, patch)
+  }, [supaMode])
+
+  const deleteTodoH = useCallback((id: string) => {
+    setTodos((prev) => prev.filter((t) => t.id !== id))
+    if (supaMode) deleteTodo(id)
+  }, [supaMode])
+
+  // 把日程小帮手生成的 .ics 一键写入日程
+  const writeIcsToSchedule = useCallback(() => {
+    const ics = output?.artifacts?.ics?.content
+    if (!ics) return
+    const sum = ics.match(/SUMMARY:(.+)/)?.[1]?.trim()
+    const dt = ics.match(/DTSTART:(\d{8}T\d{6})/)?.[1]
+    const loc = ics.match(/LOCATION:(.+)/)?.[1]?.trim()
+    let due_date: string | null = null
+    let due_time: string | null = null
+    if (dt) {
+      due_date = `${dt.slice(0, 4)}-${dt.slice(4, 6)}-${dt.slice(6, 8)}`
+      due_time = `${dt.slice(9, 11)}:${dt.slice(11, 13)}`
+    }
+    addTodoH({ title: sum || '日程', due_date, due_time, location: loc || null, source: 'schedule-helper' })
+    setActiveTab('日程')
+  }, [output, addTodoH])
 
   // 小帮手变更：本地更新 + Supabase 写回
   const updateAgents = useCallback((next: AgentWithStatus[]) => {
@@ -186,11 +227,12 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
       // mock 任务停留在 mock 情绪（吉祥物呈现"困倦/创可贴"造型），真实任务停在完成
       setAgentStatus(data.isMock ? 'mock_mode' : 'completed')
 
-      // 持久化到 Supabase
+      // 持久化到 Supabase（用户选"不允许存储"时不保存原文）
+      const noStorage = permissionScope === 'no_storage'
       let runId: string | null = null
       if (supaMode) {
         runId = await recordRun({
-          input,
+          input: noStorage ? '（按用户选择，未保存原始输入）' : input,
           output: data.output,
           outputType: data.taskType === 'vision_prompt_task' ? 'prompt' : 'markdown',
           taskType: data.taskType,
@@ -214,6 +256,21 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
           fixed: false,
         })
       }
+
+      // #6 把脱敏摘要写入对应小帮手的小账本(MEMORY.md)
+      if (supaMode && !noStorage && data.helper) {
+        const sens: string[] = data.sensitiveTypes || []
+        const summary = sens.length
+          ? `处理了一次涉敏任务（风险类型：${sens.join('、')}），已按授权范围处理，未留存原文。`
+          : briefSummary(data.output)
+        await appendHelperMemory(data.helper, {
+          taskType: data.taskType || 'unknown',
+          summary,
+          time: new Date().toLocaleString('zh-CN'),
+          prefs: sens.length ? '涉敏内容仅记录风险类型' : undefined,
+        })
+      }
+
       await refreshLedger()
     } catch {
       setAgentStatus('failed')
@@ -298,13 +355,14 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
             artifacts={output.artifacts}
             onClose={() => setOutput(null)}
             onExport={(type) => { if (supaMode) recordExport(output.taskType, type).then(refreshLedger) }}
+            onAddToSchedule={output.artifacts?.ics ? writeIcsToSchedule : undefined}
           />
         </div>
       )}
 
       {/* Tab navigation — clean text tabs */}
       <div className="flex mx-4 mt-4 sticky top-0 z-10 bg-canvas border-b border-hairline">
-        {(['我的小帮手', '帮手集市', '修理室'] as Tab[]).map((tab, i) => {
+        {(['我的小帮手', '帮手集市', '日程', '修理室'] as Tab[]).map((tab, i) => {
           const active = activeTab === tab
           return (
             <div key={tab} className="flex-1 flex items-center justify-center relative">
@@ -340,6 +398,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
       <div className="flex-1 overflow-y-auto pb-6">
         {activeTab === '我的小帮手' && <MyHelpersPanel agents={agents} onAgentsChange={updateAgents} />}
         {activeTab === '帮手集市' && <MarketplacePanel installedIds={installedIds} onInstall={handleInstall} />}
+        {activeTab === '日程' && <SchedulePanel todos={todos} onAdd={addTodoH} onUpdate={updateTodoH} onDelete={deleteTodoH} />}
         {activeTab === '修理室' && (
           <RepairRoom
             repairLogs={repairLogs}
@@ -359,4 +418,16 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
 
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+// 从输出里提炼一句话摘要（去 markdown、截断；不存冗长原文）
+function briefSummary(md: string): string {
+  if (!md) return '已生成结果。'
+  const text = md
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[#>*`|_]/g, ' ')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text.slice(0, 60) + (text.length > 60 ? '…' : '')
 }

@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
       isMock: true,
       errorMessage: null,
       modelUsed: LLM_MODEL,
+      sensitiveTypes,
     })
   }
 
@@ -134,6 +135,7 @@ export async function POST(req: NextRequest) {
       errorMessage: null,
       modelUsed: LLM_MODEL,
       artifacts: ctx.artifacts,
+      sensitiveTypes,
     })
   } catch (err) {
     // 失败兜底到 Mock
@@ -147,6 +149,7 @@ export async function POST(req: NextRequest) {
       isMock: true,
       errorMessage: err instanceof Error ? err.message : 'unknown error',
       modelUsed: LLM_MODEL,
+      sensitiveTypes,
     })
   }
 }

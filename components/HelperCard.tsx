@@ -28,76 +28,62 @@ interface Props {
 
 export default function HelperCard({ agent, onTest, onToggle, onClick }: Props) {
   const statusCfg = STATUS_CONFIG[agent.status] || STATUS_CONFIG.untested
-  const canEnable = agent.status === 'passed'
-  const canDisable = agent.status === 'enabled'
+  const isEnabled = agent.status === 'enabled'
+  const canEnable = agent.status === 'passed' || agent.status === 'disabled'
   const isTesting = agent.status === 'testing'
-  const canTest = !['enabled', 'testing'].includes(agent.status)
+
+  // 卡片最右侧的主操作按钮
+  let action: { label: string; kind: 'primary' | 'plain' | 'danger'; onClick: () => void; disabled?: boolean }
+  if (isEnabled) action = { label: '停用', kind: 'danger', onClick: () => onToggle(agent.id) }
+  else if (canEnable) action = { label: '启用', kind: 'primary', onClick: () => onToggle(agent.id) }
+  else if (isTesting) action = { label: '测试中…', kind: 'plain', onClick: () => {}, disabled: true }
+  else action = { label: '测试', kind: 'plain', onClick: () => onTest(agent.id) }
+
+  const btnStyle =
+    action.kind === 'primary'
+      ? { background: '#7d9c57', color: '#fff', boxShadow: '0 4px 12px rgba(125,156,87,0.28)' }
+      : action.kind === 'danger'
+      ? { background: '#fbeae6', color: '#e07a6a' }
+      : { background: '#f0f2eb', color: '#969a8c' }
 
   return (
     <div
       className="bg-card rounded-2xl shadow-card p-4 cursor-pointer transition-all duration-200 hover:shadow-soft hover:-translate-y-0.5"
       onClick={() => onClick(agent)}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: '#f5f8f0' }}>
           {CATEGORY_EMOJI[agent.category] || '🤖'}
         </div>
+
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[14px] font-semibold text-ink truncate">{agent.name}</span>
-            <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ color: statusCfg.color, background: statusCfg.bg }}>
-              {statusCfg.label}
-            </span>
-          </div>
-          <p className="text-[12.5px] text-sub mt-1 leading-relaxed">{agent.description}</p>
+          <div className="text-[14px] font-semibold text-ink truncate">{agent.name}</div>
+          <p className="text-[12.5px] text-sub mt-0.5 line-clamp-1">{agent.description}</p>
           {agent.required_permissions?.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
+            <div className="flex flex-wrap gap-1 mt-1.5">
               {agent.required_permissions.map((p) => (
-                <span key={p} className="text-[11px] px-2 py-0.5 rounded-full text-warn" style={{ background: '#faf0e2' }}>
+                <span key={p} className="text-[10.5px] px-1.5 py-0.5 rounded-full text-warn" style={{ background: '#faf0e2' }}>
                   {p}
                 </span>
               ))}
             </div>
           )}
         </div>
-      </div>
 
-      <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-        {(canTest || isTesting) && (
+        {/* 最右侧：状态 + 启用/停用/测试 */}
+        <div className="shrink-0 flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ color: statusCfg.color, background: statusCfg.bg }}>
+            {statusCfg.label}
+          </span>
           <button
-            onClick={() => !isTesting && onTest(agent.id)}
-            disabled={isTesting}
-            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full bg-canvas text-sub hover:text-ink transition-colors"
+            onClick={action.onClick}
+            disabled={action.disabled}
+            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full transition-all"
+            style={btnStyle}
           >
-            {isTesting ? '测试中…' : '测试'}
+            {action.label}
           </button>
-        )}
-        {canEnable && (
-          <button
-            onClick={() => onToggle(agent.id)}
-            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full text-white transition-all"
-            style={{ background: '#7d9c57', boxShadow: '0 5px 14px rgba(125,156,87,0.28)' }}
-          >
-            启用
-          </button>
-        )}
-        {canDisable && (
-          <button
-            onClick={() => onToggle(agent.id)}
-            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full bg-canvas text-sub hover:text-bad transition-colors"
-          >
-            停用
-          </button>
-        )}
-        {agent.status === 'disabled' && (
-          <button
-            onClick={() => onToggle(agent.id)}
-            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full text-white"
-            style={{ background: '#7d9c57', boxShadow: '0 5px 14px rgba(125,156,87,0.28)' }}
-          >
-            重新启用
-          </button>
-        )}
+        </div>
       </div>
     </div>
   )

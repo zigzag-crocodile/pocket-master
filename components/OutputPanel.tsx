@@ -38,9 +38,11 @@ interface Props {
   artifacts?: { ics?: { filename: string; content: string } }
   onClose: () => void
   onExport?: (type: 'markdown' | 'json' | 'copy') => void
+  onAddToSchedule?: () => void
 }
 
-export default function OutputPanel({ content, isMock, taskType, routeChain, artifacts, onClose, onExport }: Props) {
+export default function OutputPanel({ content, isMock, taskType, routeChain, artifacts, onClose, onExport, onAddToSchedule }: Props) {
+  const [added, setAdded] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const handleIcsDownload = () => {
@@ -101,13 +103,23 @@ export default function OutputPanel({ content, isMock, taskType, routeChain, art
 
       {/* actions */}
       <div className="flex items-center gap-2 px-4 py-3 border-t border-hairline flex-wrap">
+        {onAddToSchedule && (
+          <button
+            onClick={() => { onAddToSchedule(); setAdded(true) }}
+            disabled={added}
+            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full text-white transition-colors"
+            style={{ background: added ? '#9bb877' : '#7d9c57' }}
+          >
+            {added ? '✓ 已写入日程' : '📌 写入日程'}
+          </button>
+        )}
         {artifacts?.ics && (
           <button
             onClick={handleIcsDownload}
-            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full text-white transition-colors"
-            style={{ background: '#7d9c57' }}
+            className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full transition-colors"
+            style={{ background: '#f5f8f0', color: '#6b8a48' }}
           >
-            📅 下载日历(.ics)
+            📅 下载.ics
           </button>
         )}
         <button

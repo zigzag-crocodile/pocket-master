@@ -1,17 +1,22 @@
 'use client'
-import { SubAgent } from '@/data/mock_data'
 import { useState } from 'react'
 
 const CONFIG_FILES = ['AGENTS.md', 'IDENTITY.md', 'SOUL.md', 'MEMORY.md', 'SKILLS.md', 'TOOLS.md'] as const
 
+type Configs = Record<string, { frontend_note: string; content: string }>
+
 interface Props {
-  agent: SubAgent
+  name: string
+  category: string
+  description: string
+  configs: Configs | null
   onClose: () => void
 }
 
-export default function HelperDetailModal({ agent, onClose }: Props) {
+// 帮手集市的小帮手详情：展示 6 个配置文件 + 说明文案
+export default function HelperDetailModal({ name, category, description, configs, onClose }: Props) {
   const [activeFile, setActiveFile] = useState<string>('AGENTS.md')
-  const current = agent.configs[activeFile as keyof typeof agent.configs]
+  const current = configs?.[activeFile]
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-5" style={{ background: 'rgba(53,56,47,0.32)', backdropFilter: 'blur(3px)' }} onClick={onClose}>
@@ -20,16 +25,16 @@ export default function HelperDetailModal({ agent, onClose }: Props) {
         style={{ maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="min-w-0">
-            <div className="text-[16px] font-semibold text-ink">{agent.name}</div>
-            <div className="text-[12.5px] text-sub mt-0.5 truncate">{agent.category} · {agent.description}</div>
+            <div className="text-[16px] font-semibold text-ink">{name}</div>
+            <div className="text-[12.5px] text-sub mt-0.5 truncate">{category} · {description}</div>
           </div>
           <button onClick={onClose} className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-faint hover:text-sub hover:bg-canvas transition-colors">✕</button>
         </div>
 
-        {/* config tabs */}
+        <div className="px-5 pb-2 text-[11.5px] text-sub">配置文件（说明这个小帮手如何工作）</div>
+
         <div className="flex gap-1.5 px-5 overflow-x-auto pb-3">
           {CONFIG_FILES.map((file) => (
             <button
@@ -46,8 +51,7 @@ export default function HelperDetailModal({ agent, onClose }: Props) {
           ))}
         </div>
 
-        {/* config content */}
-        <div className="flex-1 overflow-y-auto px-5">
+        <div className="flex-1 overflow-y-auto px-5 pb-5">
           {current ? (
             <div className="bg-canvas rounded-2xl p-4">
               <div className="text-[12px] text-brand-deep mb-2 flex items-center gap-1.5">
@@ -58,26 +62,9 @@ export default function HelperDetailModal({ agent, onClose }: Props) {
               </pre>
             </div>
           ) : (
-            <div className="text-sub text-[13px]">暂无配置内容</div>
+            <div className="text-sub text-[13px]">暂无该配置文件内容</div>
           )}
         </div>
-
-        {/* test result */}
-        {agent.last_test_result && (
-          <div className="px-5 py-4 mt-3">
-            <div
-              className="rounded-2xl px-4 py-3"
-              style={{ background: agent.last_test_result.status === 'passed' ? '#e9f3e2' : '#f0f2eb' }}
-            >
-              <div className="text-[12.5px] font-medium" style={{ color: agent.last_test_result.status === 'passed' ? '#6fae5a' : '#969a8c' }}>
-                {agent.last_test_result.status === 'passed' ? '✓ 最近测试通过' : '尚未测试'}
-              </div>
-              {agent.last_test_result.summary && (
-                <div className="text-[12px] text-sub mt-1 leading-relaxed">{agent.last_test_result.summary}</div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

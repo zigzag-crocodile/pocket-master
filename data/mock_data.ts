@@ -302,6 +302,32 @@ export const mockData = {
   ],
 }
 
+// 帮手集市详情用：installed_subagents 里没有配置的小帮手在此补全
+const EXTRA_CONFIGS: Record<string, Record<string, { frontend_note: string; content: string }>> = {
+  "vision-prompt-helper": {
+    "AGENTS.md": { frontend_note: "这个小帮手的工作说明书，说明它如何被小当家调度。", content: "当 task_type 为 vision_prompt_task 时可被调度。第一版只生成图文识别/OCR/多模态理解 Prompt，不真实处理图片。" },
+    "IDENTITY.md": { frontend_note: "这个小帮手的身份牌，说明它是谁、负责什么。", content: "图文识别小帮手负责把用户的图片处理需求，转写成可复制的 Markdown Prompt。" },
+    "SOUL.md": { frontend_note: "这个小帮手的性格卡，说明它的表达风格和行为边界。", content: "克制、清楚。绝不假装「已识别图片」，只产出 Prompt 并提示当前版本边界。" },
+    "MEMORY.md": { frontend_note: "这个小帮手的小账本，记录它需要记住的偏好、规则和历史信息。", content: "第一版不接入 OCR / 多模态 API。涉及隐私图片需提醒。" },
+    "SKILLS.md": { frontend_note: "这个小帮手会使用哪些 Skill。", content: "VisionPromptSkill、OcrPromptSkill、ImageSummaryPromptSkill、PrivacyImageHintSkill" },
+    "TOOLS.md": { frontend_note: "这个小帮手能调用哪些 Tool。", content: "MarkdownExportTool、CopyResultTool、TaskLogTool" },
+  },
+  "info-reminder-helper": {
+    "AGENTS.md": { frontend_note: "这个小帮手的工作说明书，说明它如何被小当家调度。", content: "当 task_type 为 info_reminder_task 时可被调度。整理资讯主题、重点、关注理由与后续行动。" },
+    "IDENTITY.md": { frontend_note: "这个小帮手的身份牌，说明它是谁、负责什么。", content: "资讯小帮手负责把资讯/动态整理成「为什么值得关注 + 后续怎么做」。" },
+    "SOUL.md": { frontend_note: "这个小帮手的性格卡，说明它的表达风格和行为边界。", content: "简洁、有判断力。不主动联网、不保证时效性，如实说明。" },
+    "MEMORY.md": { frontend_note: "这个小帮手的小账本，记录它需要记住的偏好、规则和历史信息。", content: "第一版不真实订阅新闻源、不创建系统提醒。" },
+    "SKILLS.md": { frontend_note: "这个小帮手会使用哪些 Skill。", content: "InfoTopicSkill、KeyPointSkill、WhyFollowSkill、ActionSuggestionSkill" },
+    "TOOLS.md": { frontend_note: "这个小帮手能调用哪些 Tool。", content: "MarkdownExportTool、TaskLogTool" },
+  },
+}
+
+export function getHelperConfigs(id: string): Record<string, { frontend_note: string; content: string }> | null {
+  const inst = mockData.installed_subagents.find((a) => a.id === id)
+  if (inst) return inst.configs
+  return EXTRA_CONFIGS[id] || null
+}
+
 export interface ConfigFile {
   frontend_note: string
   content: string

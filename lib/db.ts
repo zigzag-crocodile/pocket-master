@@ -217,3 +217,130 @@ export async function computeLedger(): Promise<LedgerData | null> {
     metrics,
   }
 }
+
+// ============ 待办 / 日程 ============
+export interface Todo {
+  id: string
+  title: string
+  due_date: string | null
+  due_time: string | null
+  location: string | null
+  notes: string | null
+  done: boolean
+  source: string
+  created_at: string
+}
+
+export async function loadTodos(): Promise<Todo[] | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.warn('[db] loadTodos:', error.message)
+    return null
+  }
+  return (data || []) as Todo[]
+}
+
+export async function addTodo(t: Partial<Todo>): Promise<Todo | null> {
+  if (!supabase) return null
+  const uid = await currentUserId()
+  if (!uid) return null
+  const { data, error } = await supabase
+    .from('todos')
+    .insert({
+      user_id: uid,
+      title: t.title,
+      due_date: t.due_date || null,
+      due_time: t.due_time || null,
+      location: t.location || null,
+      notes: t.notes || null,
+      done: t.done ?? false,
+      source: t.source || 'manual',
+    })
+    .select('*')
+    .single()
+  if (error) {
+    console.warn('[db] addTodo:', error.message)
+    return null
+  }
+  return data as Todo
+}
+
+export async function updateTodo(id: string, patch: Partial<Todo>): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.from('todos').update(patch).eq('id', id)
+  if (error) console.warn('[db] updateTodo:', error.message)
+}
+
+export async function deleteTodo(id: string): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.from('todos').delete().eq('id', id)
+  if (error) console.warn('[db] deleteTodo:', error.message)
+}
+
+// ============ 小帮手历史工作记录 ============
+export interface HelperHistoryItem {
+  id: string
+  input: string
+  output: string
+  created_at: string
+  status: string
+  isMock: boolean
+  routeChain: string[]
+}
+
+export async function loadHelperHistory(helperId: string): Promise<HelperHistoryItem[] | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('agent_runs')
+    .select('id, created_at, main_agent_status, is_mock, route_chain, success, tasks(input_text, output_text)')
+    .contains('called_subagents', [helperId])
+    .order('created_at', { ascending: false })
+    .limit(30)
+  if (error) {
+    console.warn('[db] loadHelperHistory:', error.message)
+    return null
+  }
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    input: r.tasks?.input_text || '',
+    output: r.tasks?.output_text || '',
+    created_at: r.created_at,
+    status: r.main_agent_status || (r.success ? 'completed' : 'failed'),
+    isMock: r.is_mock,
+    routeChain: r.route_chain || [],
+  }))
+}
+
+// ============ 小账本（MEMORY.md）脱敏摘要写入 ============
+export interface MemoryEntry {
+  taskType: string
+  summary: string
+  time: string
+  prefs?: string
+}
+
+export async function appendHelperMemory(helperId: string, entry: MemoryEntry): Promise<void> {
+  if (!supabase) return
+  const { data, error } = await supabase.from('subagents').select('configs').eq('id', helperId).maybeSingle()
+  if (error || !data) {
+    if (error) console.warn('[db] appendHelperMemory read:', error.message)
+    return
+  }
+  const configs = (data.configs || {}) as Record<string, { frontend_note?: string; content?: string }>
+  const mem = configs['MEMORY.md'] || { frontend_note: '这个小帮手的小账本，记录它需要记住的偏好、规则和历史信息。', content: '' }
+  const line = `- [${entry.time}]（${entry.taskType}）${entry.summary}${entry.prefs ? ' · 偏好/规则：' + entry.prefs : ''}`
+  const marker = '## 小账本记录'
+  const parts = (mem.content || '').split(marker)
+  const original = (parts[0] || '').trim()
+  const existing = (parts[1] || '').split('\n').map((s) => s.trim()).filter(Boolean)
+  const updated = [line, ...existing].slice(0, 20)
+  mem.content = `${original}\n\n${marker}\n${updated.join('\n')}`.trim()
+  configs['MEMORY.md'] = mem
+  const { error: upErr } = await supabase.from('subagents').update({ configs, updated_at: new Date().toISOString() }).eq('id', helperId)
+  if (upErr) console.warn('[db] appendHelperMemory write:', upErr.message)
+}

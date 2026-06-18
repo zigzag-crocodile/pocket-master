@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { SubAgent } from '@/data/mock_data'
 import HelperCard from './HelperCard'
-import HelperDetailModal from './HelperDetailModal'
+import HelperHistoryModal from './HelperHistoryModal'
 
 type AgentWithStatus = SubAgent & { status: string }
 
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function MyHelpersPanel({ agents, onAgentsChange }: Props) {
-  const [detailAgent, setDetailAgent] = useState<SubAgent | null>(null)
+  const [historyOf, setHistoryOf] = useState<{ id: string; name: string } | null>(null)
 
   const handleTest = (id: string) => {
     onAgentsChange(agents.map((a) => (a.id === id ? { ...a, status: 'testing' } : a)))
@@ -68,12 +68,12 @@ export default function MyHelpersPanel({ agents, onAgentsChange }: Props) {
               agent={agent}
               onTest={handleTest}
               onToggle={handleToggle}
-              onClick={(a) => setDetailAgent(a as SubAgent)}
+              onClick={(a) => setHistoryOf({ id: a.id, name: a.name })}
             />
           ))}
         </div>
       )}
-      {detailAgent && <HelperDetailModal agent={detailAgent} onClose={() => setDetailAgent(null)} />}
+      {historyOf && <HelperHistoryModal helperId={historyOf.id} helperName={historyOf.name} onClose={() => setHistoryOf(null)} />}
     </div>
   )
 }

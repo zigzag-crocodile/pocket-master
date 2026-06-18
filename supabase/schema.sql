@@ -74,18 +74,33 @@ create table if not exists public.export_logs (
   created_at timestamptz default now()
 );
 
+-- 待办 / 日程
+create table if not exists public.todos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  title text not null,
+  due_date date,
+  due_time text,                             -- 'HH:MM'，可空
+  location text,
+  notes text,
+  done boolean default false,
+  source text default 'manual',              -- manual / schedule-helper
+  created_at timestamptz default now()
+);
+
 -- ============ 行级安全 (RLS) ============
 alter table public.subagents   enable row level security;
 alter table public.tasks       enable row level security;
 alter table public.agent_runs  enable row level security;
 alter table public.repair_logs enable row level security;
 alter table public.export_logs enable row level security;
+alter table public.todos       enable row level security;
 
 -- 每个表：用户只能操作自己的行（user_id = 当前登录用户）
 do $$
 declare t text;
 begin
-  foreach t in array array['subagents','tasks','agent_runs','repair_logs','export_logs']
+  foreach t in array array['subagents','tasks','agent_runs','repair_logs','export_logs','todos']
   loop
     execute format('drop policy if exists "own_select" on public.%I;', t);
     execute format('drop policy if exists "own_insert" on public.%I;', t);
@@ -102,3 +117,4 @@ end $$;
 create index if not exists idx_tasks_user_created on public.tasks(user_id, created_at desc);
 create index if not exists idx_runs_user_created on public.agent_runs(user_id, created_at desc);
 create index if not exists idx_repair_user_created on public.repair_logs(user_id, created_at desc);
+create index if not exists idx_todos_user_due on public.todos(user_id, due_date);

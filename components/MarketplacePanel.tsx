@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { MarketplaceTemplate, mockData } from '@/data/mock_data'
+import { MarketplaceTemplate, mockData, getHelperConfigs } from '@/data/mock_data'
+import HelperDetailModal from './HelperDetailModal'
 
 const CATEGORIES = ['全部', '效率办公', '学习总结', '生活事务', '内容创作', '数据分析', '系统内置']
 
@@ -21,6 +22,7 @@ interface Props {
 export default function MarketplacePanel({ installedIds, onInstall }: Props) {
   const [category, setCategory] = useState('全部')
   const [search, setSearch] = useState('')
+  const [detail, setDetail] = useState<MarketplaceTemplate | null>(null)
 
   const templates = mockData.marketplace_templates.filter((t) => {
     const matchCat = category === '全部' || t.category === category
@@ -64,7 +66,7 @@ export default function MarketplacePanel({ installedIds, onInstall }: Props) {
         {templates.map((t) => {
           const isInstalled = installedIds.includes(t.id)
           return (
-            <div key={t.id} className="bg-card rounded-2xl shadow-card p-4">
+            <div key={t.id} className="bg-card rounded-2xl shadow-card p-4 cursor-pointer transition-shadow hover:shadow-soft" onClick={() => setDetail(t)}>
               <div className="flex items-start gap-3">
                 <div className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-xl" style={{ background: '#f5f8f0' }}>
                   {CATEGORY_EMOJI[t.category] || '🤖'}
@@ -98,23 +100,41 @@ export default function MarketplacePanel({ installedIds, onInstall }: Props) {
                 <div className="text-[11.5px] text-warn mt-2">需要权限：{t.required_permissions.join('、')}</div>
               )}
 
-              <button
-                onClick={() => !isInstalled && onInstall(t)}
-                disabled={isInstalled}
-                className="mt-3 w-full text-[13px] font-medium py-2 rounded-full transition-all"
-                style={{
-                  background: isInstalled ? '#f0f2eb' : '#7d9c57',
-                  color: isInstalled ? '#969a8c' : '#ffffff',
-                  boxShadow: isInstalled ? 'none' : '0 6px 16px rgba(125,156,87,0.28)',
-                  cursor: isInstalled ? 'default' : 'pointer',
-                }}
-              >
-                {isInstalled ? '✓ 已安装' : '安装到我的小帮手'}
-              </button>
+              <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => !isInstalled && onInstall(t)}
+                  disabled={isInstalled}
+                  className="flex-1 text-[13px] font-medium py-2 rounded-full transition-all"
+                  style={{
+                    background: isInstalled ? '#f0f2eb' : '#7d9c57',
+                    color: isInstalled ? '#969a8c' : '#ffffff',
+                    boxShadow: isInstalled ? 'none' : '0 6px 16px rgba(125,156,87,0.28)',
+                    cursor: isInstalled ? 'default' : 'pointer',
+                  }}
+                >
+                  {isInstalled ? '✓ 已安装' : '安装到我的小帮手'}
+                </button>
+                <button
+                  onClick={() => setDetail(t)}
+                  className="text-[13px] font-medium px-3.5 py-2 rounded-full bg-canvas text-sub hover:text-ink transition-colors"
+                >
+                  详情
+                </button>
+              </div>
             </div>
           )
         })}
       </div>
+
+      {detail && (
+        <HelperDetailModal
+          name={detail.name}
+          category={detail.category}
+          description={detail.description}
+          configs={getHelperConfigs(detail.id)}
+          onClose={() => setDetail(null)}
+        />
+      )}
     </div>
   )
 }
