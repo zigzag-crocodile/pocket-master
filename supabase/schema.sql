@@ -27,6 +27,7 @@ create table if not exists public.subagents (
 create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  title text,                                -- 历史记录标题（自动生成，可编辑）
   input_text text,
   output_text text,
   output_type text,                          -- markdown/json/prompt
@@ -34,6 +35,7 @@ create table if not exists public.tasks (
   status text,                               -- completed/failed/mock
   created_at timestamptz default now()
 );
+-- 已有项目补列：alter table public.tasks add column if not exists title text;
 
 -- 调度运行记录
 create table if not exists public.agent_runs (

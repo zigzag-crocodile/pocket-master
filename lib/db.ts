@@ -86,6 +86,7 @@ export async function recordRun(params: {
   output: string
   outputType: string
   taskType: string
+  title?: string
   routeChain: string[]
   calledSubagents: string[]
   modelUsed: string
@@ -96,13 +97,16 @@ export async function recordRun(params: {
 }): Promise<string | null> {
   if (!supabase) return null
   const status = !params.success ? 'failed' : params.isMock ? 'mock' : 'completed'
-  const { data: task, error: tErr } = await supabase
-    .from('tasks')
-    .insert({ input_text: params.input, output_text: params.output, output_type: params.outputType, task_type: params.taskType, status })
-    .select('id')
-    .single()
+  const base = { input_text: params.input, output_text: params.output, output_type: params.outputType, task_type: params.taskType, status }
+  // 优先带 title 写入；若 title 列尚未建则回退（兼容未跑 ALTER 的库）
+  let task: any = null
+  let tErr: any = null
+  ;({ data: task, error: tErr } = await supabase.from('tasks').insert({ ...base, title: params.title || null }).select('id').single())
   if (tErr) {
-    console.warn('[db] insert task:', tErr.message)
+    ;({ data: task, error: tErr } = await supabase.from('tasks').insert(base).select('id').single())
+  }
+  if (tErr || !task) {
+    console.warn('[db] insert task:', tErr?.message)
     return null
   }
   const { data: run, error: rErr } = await supabase
@@ -285,34 +289,91 @@ export async function deleteTodo(id: string): Promise<void> {
 // ============ 小帮手历史工作记录 ============
 export interface HelperHistoryItem {
   id: string
+  taskId: string | null
+  title: string
   input: string
   output: string
   created_at: string
   status: string
   isMock: boolean
-  routeChain: string[]
+}
+
+// 从输入/输出自动生成一个简短标题
+export function autoTitle(input: string, output: string): string {
+  const src = (input || output || '').replace(/[#>*`|_]/g, '').replace(/\s+/g, ' ').trim()
+  if (!src) return '未命名任务'
+  return src.slice(0, 18) + (src.length > 18 ? '…' : '')
 }
 
 export async function loadHelperHistory(helperId: string): Promise<HelperHistoryItem[] | null> {
   if (!supabase) return null
-  const { data, error } = await supabase
-    .from('agent_runs')
-    .select('id, created_at, main_agent_status, is_mock, route_chain, success, tasks(input_text, output_text)')
-    .contains('called_subagents', [helperId])
-    .order('created_at', { ascending: false })
-    .limit(30)
+  const run = async (taskSel: string) =>
+    supabase!
+      .from('agent_runs')
+      .select(`id, task_id, created_at, main_agent_status, is_mock, success, tasks(${taskSel})`)
+      .contains('called_subagents', [helperId])
+      .order('created_at', { ascending: false })
+      .limit(30)
+  // 优先带 title；title 列不存在则回退
+  let { data, error } = await run('title, input_text, output_text')
+  if (error) ({ data, error } = await run('input_text, output_text'))
   if (error) {
     console.warn('[db] loadHelperHistory:', error.message)
     return null
   }
+  return (data || []).map((r: any) => {
+    const input = r.tasks?.input_text || ''
+    const output = r.tasks?.output_text || ''
+    return {
+      id: r.id,
+      taskId: r.task_id || null,
+      title: r.tasks?.title || autoTitle(input, output),
+      input,
+      output,
+      created_at: r.created_at,
+      status: r.main_agent_status || (r.success ? 'completed' : 'failed'),
+      isMock: r.is_mock,
+    }
+  })
+}
+
+export async function updateTaskTitle(taskId: string, title: string): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.from('tasks').update({ title }).eq('id', taskId)
+  if (error) console.warn('[db] updateTaskTitle:', error.message)
+}
+
+// 最近活动（当家账本 / 小诊所用）
+export interface RecentRun {
+  id: string
+  taskType: string
+  status: string
+  isMock: boolean
+  title: string
+  created_at: string
+}
+
+export async function loadRecentActivity(limit = 8): Promise<RecentRun[] | null> {
+  if (!supabase) return null
+  const run = async (taskSel: string) =>
+    supabase!
+      .from('agent_runs')
+      .select(`id, created_at, main_agent_status, is_mock, success, tasks(${taskSel})`)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  let { data, error } = await run('title, input_text, output_text, task_type')
+  if (error) ({ data, error } = await run('input_text, output_text, task_type'))
+  if (error) {
+    console.warn('[db] loadRecentActivity:', error.message)
+    return null
+  }
   return (data || []).map((r: any) => ({
     id: r.id,
-    input: r.tasks?.input_text || '',
-    output: r.tasks?.output_text || '',
-    created_at: r.created_at,
+    taskType: r.tasks?.task_type || 'unknown',
     status: r.main_agent_status || (r.success ? 'completed' : 'failed'),
     isMock: r.is_mock,
-    routeChain: r.route_chain || [],
+    title: r.tasks?.title || autoTitle(r.tasks?.input_text || '', r.tasks?.output_text || ''),
+    created_at: r.created_at,
   }))
 }
 

@@ -55,31 +55,31 @@ export default function AgentStatusPanel({ status, routeText, helperName, isMock
       )}
 
       {/* 居中放大的小当家 */}
-      <div className="relative" style={{ width: 150, height: 150 }}>
+      <div className="relative" style={{ width: 184, height: 184 }}>
         <div
           className="absolute inset-0 rounded-full"
-          style={{ background: 'radial-gradient(circle at 50% 45%, rgba(125,156,87,0.16), rgba(125,156,87,0) 70%)' }}
+          style={{ background: 'radial-gradient(circle at 50% 45%, rgba(125,156,87,0.18), rgba(125,156,87,0) 70%)' }}
         />
         <div className="relative flex items-center justify-center w-full h-full">
-          <CharacterAvatar status={status} size={150} />
+          <CharacterAvatar status={status} size={184} />
         </div>
       </div>
 
       {/* 名字 + 状态 chip */}
-      <div className="flex items-center justify-center gap-2 mt-1">
-        <span className="text-[14px] font-semibold text-ink">小当家</span>
-        <span className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ color: cfg.tone, background: `${cfg.tone}1f` }}>
+      <div className="flex items-center justify-center gap-2 mt-1.5">
+        <span className="text-[17px] font-bold text-ink">小当家</span>
+        <span className="text-[12px] px-2.5 py-0.5 rounded-full font-medium" style={{ color: cfg.tone, background: `${cfg.tone}1f` }}>
           {cfg.chip}
         </span>
         {isMock && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium text-mock" style={{ background: '#f4eede' }}>
+          <span className="text-[12px] px-2.5 py-0.5 rounded-full font-medium text-mock" style={{ background: '#f4eede' }}>
             Mock
           </span>
         )}
       </div>
 
       {/* 一行状态文字 */}
-      <p className="text-[13px] leading-relaxed mt-1.5 px-2" style={{ color: '#5b5f50' }}>
+      <p className="text-[14px] leading-relaxed mt-2 px-2" style={{ color: '#5b5f50' }}>
         {displayText}
         {isActive && <DotsLoader />}
       </p>

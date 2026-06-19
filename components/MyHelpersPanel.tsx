@@ -68,7 +68,7 @@ export default function MyHelpersPanel({ agents, onAgentsChange, onOpenMarketpla
         className="w-full mt-4 py-3.5 rounded-full text-[13.5px] font-medium flex items-center justify-center gap-2 transition-all hover:shadow-soft"
         style={{ background: '#eef4e6', color: '#6b8a48' }}
       >
-        <span>🛒</span> 去帮手集市发现更多小帮手
+        <span>🛒</span> 帮手集市
       </button>
 
       {historyOf && <HelperHistoryModal helperId={historyOf.id} helperName={historyOf.name} onClose={() => setHistoryOf(null)} />}

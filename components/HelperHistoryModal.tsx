@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { loadHelperHistory, HelperHistoryItem } from '@/lib/db'
+import { loadHelperHistory, updateTaskTitle, HelperHistoryItem } from '@/lib/db'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
 interface Props {
@@ -19,27 +19,30 @@ export default function HelperHistoryModal({ helperId, helperName, onClose }: Pr
   const [items, setItems] = useState<HelperHistoryItem[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
   const supaOn = isSupabaseConfigured()
 
   useEffect(() => {
     let active = true
     ;(async () => {
       const data = await loadHelperHistory(helperId)
-      if (active) {
-        setItems(data)
-        setLoading(false)
-      }
+      if (active) { setItems(data); setLoading(false) }
     })()
     return () => { active = false }
   }, [helperId])
 
+  const saveTitle = (it: HelperHistoryItem) => {
+    const t = draft.trim()
+    setEditing(null)
+    if (!t || t === it.title) return
+    setItems((prev) => prev?.map((x) => (x.id === it.id ? { ...x, title: t } : x)) ?? prev)
+    if (it.taskId) updateTaskTitle(it.taskId, t)
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-5" style={{ background: 'rgba(53,56,47,0.32)', backdropFilter: 'blur(3px)' }} onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-card rounded-3xl shadow-lift pop-in"
-        style={{ maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="w-full max-w-md bg-card rounded-3xl shadow-lift pop-in" style={{ maxHeight: '88vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="min-w-0">
             <div className="text-[16px] font-semibold text-ink">{helperName}</div>
@@ -52,9 +55,7 @@ export default function HelperHistoryModal({ helperId, helperName, onClose }: Pr
           {loading ? (
             <div className="text-sub text-[13px] text-center py-10">载入中…</div>
           ) : !supaOn ? (
-            <div className="text-sub text-[13px] text-center py-10 leading-relaxed">
-              当前为 demo 模式（未接 Supabase），历史记录不会持久化。<br />登录真实账号后，这里会显示该小帮手的每次调用记录。
-            </div>
+            <div className="text-sub text-[13px] text-center py-10 leading-relaxed">当前为 demo 模式（未接 Supabase），历史不持久化。<br />登录真实账号后这里会显示每次调用记录。</div>
           ) : !items || items.length === 0 ? (
             <div className="text-sub text-[13px] text-center py-10">这个小帮手还没有工作记录。<br />去输入框派个任务试试吧。</div>
           ) : (
@@ -64,22 +65,50 @@ export default function HelperHistoryModal({ helperId, helperName, onClose }: Pr
                 const open = expanded === it.id
                 return (
                   <div key={it.id} className="rounded-2xl border border-hairline overflow-hidden">
-                    <button className="w-full text-left px-3.5 py-3" onClick={() => setExpanded(open ? null : it.id)}>
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[11.5px] text-faint">{new Date(it.created_at).toLocaleString('zh-CN')}</span>
+                    <div className="px-3.5 py-3">
+                      {/* 标题行（可编辑） */}
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {editing === it.id ? (
+                          <input
+                            autoFocus
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            onBlur={() => saveTitle(it)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(it); if (e.key === 'Escape') setEditing(null) }}
+                            className="flex-1 min-w-0 text-[13.5px] font-medium text-ink bg-canvas rounded-lg px-2 py-1 outline-none border border-brand"
+                          />
+                        ) : (
+                          <>
+                            <span className="flex-1 min-w-0 text-[13.5px] font-medium text-ink truncate">{it.title}</span>
+                            <button
+                              onClick={() => { setEditing(it.id); setDraft(it.title) }}
+                              className="shrink-0 text-[11px] text-faint hover:text-brand-deep px-1"
+                              title="重命名"
+                            >
+                              ✎
+                            </button>
+                          </>
+                        )}
                         <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ color: st.color, background: st.bg }}>{st.label}</span>
                       </div>
-                      <div className="text-[13px] text-ink line-clamp-2">{it.input || '（无输入文本）'}</div>
-                      {it.routeChain?.length > 0 && (
-                        <div className="text-[11px] text-faint mt-1 truncate">{it.routeChain.join(' → ')}</div>
-                      )}
-                    </button>
+                      {/* 时间 + 展开 */}
+                      <button className="w-full text-left" onClick={() => setExpanded(open ? null : it.id)}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11.5px] text-faint">{new Date(it.created_at).toLocaleString('zh-CN')}</span>
+                          <span className="text-[11.5px] text-brand-deep">{open ? '收起' : '查看内容'}</span>
+                        </div>
+                      </button>
+                    </div>
                     {open && (
-                      <div className="px-3.5 pb-3 border-t border-hairline pt-2.5">
-                        <div className="text-[11.5px] text-sub mb-1">输出</div>
-                        <pre className="text-[12px] text-ink whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto" style={{ fontFamily: 'inherit' }}>
-                          {it.output || '（无输出）'}
-                        </pre>
+                      <div className="px-3.5 pb-3 border-t border-hairline pt-2.5 space-y-2">
+                        <div>
+                          <div className="text-[11.5px] text-sub mb-1">输入</div>
+                          <div className="text-[12.5px] text-ink whitespace-pre-wrap">{it.input || '（无输入）'}</div>
+                        </div>
+                        <div>
+                          <div className="text-[11.5px] text-sub mb-1">输出</div>
+                          <pre className="text-[12px] text-ink whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto" style={{ fontFamily: 'inherit' }}>{it.output || '（无输出）'}</pre>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -8,9 +8,10 @@ import RepairRoom from '@/components/RepairRoom'
 import OutputPanel from '@/components/OutputPanel'
 import PermissionModal from '@/components/PermissionModal'
 import SchedulePanel from '@/components/SchedulePanel'
+import Logo from '@/components/Logo'
 import { mockData, SubAgent, MarketplaceTemplate, RepairLog } from '@/data/mock_data'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import { loadSubagents, upsertSubagents, recordRun, recordRepair, recordExport, loadRepairLogs, computeLedger, appendHelperMemory, loadTodos, addTodo, updateTodo, deleteTodo, Todo, AgentRow, LedgerData } from '@/lib/db'
+import { loadSubagents, upsertSubagents, recordRun, recordRepair, recordExport, loadRepairLogs, computeLedger, appendHelperMemory, loadTodos, addTodo, updateTodo, deleteTodo, autoTitle, loadRecentActivity, Todo, RecentRun, AgentRow, LedgerData } from '@/lib/db'
 
 type Tab = '我的小帮手' | '帮手集市' | '日程' | '修理室'
 
@@ -47,6 +48,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     supaMode ? [] : mockData.installed_subagents.map((a) => ({ ...a }))
   )
   const [ledger, setLedger] = useState<LedgerData | null>(null)
+  const [recentRuns, setRecentRuns] = useState<RecentRun[]>([])
   const [todos, setTodos] = useState<Todo[]>([])
 
   const installedIds = agents.map((a) => a.id)
@@ -56,12 +58,13 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     if (!supaMode) return
     let active = true
     ;(async () => {
-      const [subs, logs, led, tds] = await Promise.all([loadSubagents(), loadRepairLogs(), computeLedger(), loadTodos()])
+      const [subs, logs, led, tds, recent] = await Promise.all([loadSubagents(), loadRepairLogs(), computeLedger(), loadTodos(), loadRecentActivity()])
       if (!active) return
       if (subs) setAgents(subs)
       if (logs) setRepairLogs(logs)
       if (led) setLedger(led)
       if (tds) setTodos(tds)
+      if (recent) setRecentRuns(recent)
     })()
     return () => { active = false }
   }, [supaMode])
@@ -112,8 +115,9 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
 
   const refreshLedger = useCallback(async () => {
     if (!supaMode) return
-    const led = await computeLedger()
+    const [led, recent] = await Promise.all([computeLedger(), loadRecentActivity()])
     if (led) setLedger(led)
+    if (recent) setRecentRuns(recent)
   }, [supaMode])
 
   const handleInstall = useCallback((template: MarketplaceTemplate) => {
@@ -236,6 +240,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
           output: data.output,
           outputType: data.taskType === 'vision_prompt_task' ? 'prompt' : 'markdown',
           taskType: data.taskType,
+          title: autoTitle(noStorage ? '' : input, data.output),
           routeChain: data.routeChain || [],
           calledSubagents: [data.helper],
           modelUsed: data.modelUsed,
@@ -310,9 +315,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-7 h-7 rounded-xl text-white text-sm" style={{ background: 'linear-gradient(135deg,#94b56a,#6b8a48)' }}>
-            🌱
-          </span>
+          <Logo size={28} />
           <span className="text-[15px] font-bold text-ink tracking-tight">随身小当家</span>
         </div>
         <div className="flex items-center gap-2 min-w-0">
@@ -404,6 +407,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
             repairLogs={repairLogs}
             metrics={ledger ? ledger.metrics : mockData.ledger_metrics.metrics}
             summary={ledger ? ledger.summary : undefined}
+            recent={recentRuns}
           />
         )}
       </div>
