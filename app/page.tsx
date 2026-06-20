@@ -14,6 +14,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   // 检查已有会话（仅 Supabase 模式）
   useEffect(() => {
@@ -135,13 +136,28 @@ export default function Home() {
             </div>
             <div>
               <div className="text-[12.5px] text-sub mb-1.5 ml-1">密码{!supaOn && '（Demo 模式可留空）'}</div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 text-[14px] rounded-2xl bg-canvas text-ink outline-none border-2 border-transparent focus:border-brand transition-colors placeholder:text-faint"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="请输入密码"
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  className="w-full pl-4 pr-11 py-3 text-[14px] rounded-2xl bg-canvas text-ink outline-none border-2 border-transparent focus:border-brand transition-colors placeholder:text-faint"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? '隐藏密码' : '显示密码'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full text-sub hover:text-ink"
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                  )}
+                </button>
+              </div>
             </div>
             {error && <div className="text-bad text-[12.5px] ml-1">{error}</div>}
             {notice && <div className="text-[12.5px] ml-1" style={{ color: '#6b8a48' }}>{notice}</div>}
@@ -158,8 +174,6 @@ export default function Home() {
             {supaOn ? '已接入 Supabase · 真实账号' : 'Demo · 任意邮箱即可登录'}
           </div>
         </div>
-
-        <div className="text-center mt-5 text-[11.5px] text-faint">第一版 · 无需配置也能体验完整流程</div>
       </div>
     </div>
   )
