@@ -90,6 +90,17 @@ create table if not exists public.todos (
   created_at timestamptz default now()
 );
 
+-- 访问统计（仅 service role 读写）
+create table if not exists public.visits (
+  id uuid primary key default gen_random_uuid(),
+  path text,
+  session_id text,
+  user_email text,
+  created_at timestamptz default now()
+);
+alter table public.visits enable row level security;  -- 不加 client 策略 = 只能服务端(service role)访问
+create index if not exists idx_visits_created on public.visits(created_at desc);
+
 -- ============ 行级安全 (RLS) ============
 alter table public.subagents   enable row level security;
 alter table public.tasks       enable row level security;

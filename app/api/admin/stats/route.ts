@@ -24,8 +24,12 @@ export async function GET(req: NextRequest) {
   const { data: u } = await supabaseAdmin.auth.getUser(token)
   if (!isAdminEmail(u.user?.email)) return NextResponse.json({ error: '无权限（非管理员账号）' }, { status: 403 })
 
+  // 今日 0 点
+  const dayStart = new Date()
+  dayStart.setHours(0, 0, 0, 0)
+
   try {
-    const [usersRes, totalTasks, completed, failed, mockRuns, totalRuns, totalTodos, taskUserRows, recentRows] = await Promise.all([
+    const [usersRes, totalTasks, completed, failed, mockRuns, totalRuns, totalTodos, taskUserRows, recentRows, pv, todayPv, sessionRows] = await Promise.all([
       supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
       cnt('tasks'),
       cnt('tasks', { status: 'completed' }),
@@ -39,7 +43,15 @@ export async function GET(req: NextRequest) {
         .select('id, created_at, main_agent_status, is_mock, success, tasks(task_type, user_id, input_text, output_text)')
         .order('created_at', { ascending: false })
         .limit(25),
+      cnt('visits'),
+      (async () => {
+        const { count } = await supabaseAdmin!.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', dayStart.toISOString())
+        return count || 0
+      })(),
+      supabaseAdmin.from('visits').select('session_id').limit(20000),
     ])
+
+    const uv = new Set(((sessionRows.data as any[]) || []).map((r) => r.session_id).filter(Boolean)).size
 
     const users = usersRes.data?.users || []
     const emailById = new Map(users.map((x: any) => [x.id, x.email]))
@@ -72,6 +84,7 @@ export async function GET(req: NextRequest) {
       tasks: { total: totalTasks, completed, failed },
       runs: { total: totalRuns, mock: mockRuns, mockRate: totalRuns ? Math.round((mockRuns / totalRuns) * 100) : 0 },
       todos: totalTodos,
+      visits: { pv, uv, today: todayPv },
       recent,
     })
   } catch (err) {

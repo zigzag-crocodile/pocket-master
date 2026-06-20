@@ -7,6 +7,7 @@ interface Stats {
   tasks: { total: number; completed: number; failed: number }
   runs: { total: number; mock: number; mockRate: number }
   todos: number
+  visits?: { pv: number; uv: number; today: number }
   recent: { title: string; taskType: string; status: string; isMock: boolean; userEmail: string; created_at: string }[]
 }
 
@@ -64,11 +65,27 @@ export default function AdminPage() {
     { v: data.todos, l: '待办数', c: '#7d9c57' },
   ]
 
+  const visitCards = [
+    { v: data.visits?.pv ?? 0, l: '总访问(PV)', c: '#34382f' },
+    { v: data.visits?.uv ?? 0, l: '独立访客(UV)', c: '#6b8a48' },
+    { v: data.visits?.today ?? 0, l: '今日访问', c: '#7d9c57' },
+  ]
+
   return wrap(
     <div className="space-y-5">
       {/* 概览 */}
       <div className="grid grid-cols-4 gap-2">
         {cards.map((x) => (
+          <div key={x.l} className="bg-card rounded-2xl shadow-card px-1 py-3.5 text-center">
+            <div className="text-[20px] font-bold leading-none" style={{ color: x.c }}>{x.v}</div>
+            <div className="text-[10.5px] text-sub mt-1.5">{x.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 访问量 */}
+      <div className="grid grid-cols-3 gap-2">
+        {visitCards.map((x) => (
           <div key={x.l} className="bg-card rounded-2xl shadow-card px-1 py-3.5 text-center">
             <div className="text-[20px] font-bold leading-none" style={{ color: x.c }}>{x.v}</div>
             <div className="text-[10.5px] text-sub mt-1.5">{x.l}</div>

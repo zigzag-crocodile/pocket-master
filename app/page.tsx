@@ -16,6 +16,15 @@ export default function Home() {
   const [notice, setNotice] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
+  // 访问埋点（每次进入上报一次）
+  useEffect(() => {
+    try {
+      let sid = localStorage.getItem('pm_sid')
+      if (!sid) { sid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('pm_sid', sid) }
+      fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: location.pathname, sessionId: sid }) }).catch(() => {})
+    } catch {}
+  }, [])
+
   // 检查已有会话（仅 Supabase 模式）
   useEffect(() => {
     if (!supaOn || !supabase) {
