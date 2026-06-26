@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { apiUrl } from '@/lib/apiBase'
 
 interface Stats {
   users: { total: number; list: { email: string; created_at: string; last_sign_in_at: string | null; confirmed: boolean; taskCount: number }[] }
@@ -31,7 +32,7 @@ export default function AdminPage() {
       const { data: s } = await supabase.auth.getSession()
       const token = s.session?.access_token
       if (!token) { setState('no-login'); return }
-      const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(apiUrl('/api/admin/stats'), { headers: { Authorization: `Bearer ${token}` } })
       if (res.status === 403) { setState('forbidden'); return }
       const j = await res.json()
       if (!res.ok) { setState('error'); setErrMsg(j.error || '加载失败'); return }

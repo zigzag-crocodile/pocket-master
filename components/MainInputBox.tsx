@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import { apiUrl } from '@/lib/apiBase'
 
 interface Props {
   onSubmit: (input: string) => void
@@ -73,7 +74,7 @@ export default function MainInputBox({ onSubmit, disabled }: Props) {
   async function transcribe(blob: Blob, filename: string): Promise<string> {
     const fd = new FormData()
     fd.append('file', blob, filename)
-    const r = await fetch('/api/transcribe', { method: 'POST', body: fd })
+    const r = await fetch(apiUrl('/api/transcribe'), { method: 'POST', body: fd })
     const d = await r.json()
     if (!r.ok) throw new Error(d.error || '转写失败')
     return d.text || ''

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Dashboard from '@/components/Dashboard'
 import CharacterAvatar from '@/components/CharacterAvatar'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { apiUrl } from '@/lib/apiBase'
 
 export default function Home() {
   const supaOn = isSupabaseConfigured()
@@ -21,7 +22,7 @@ export default function Home() {
     try {
       let sid = localStorage.getItem('pm_sid')
       if (!sid) { sid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('pm_sid', sid) }
-      fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: location.pathname, sessionId: sid }) }).catch(() => {})
+      fetch(apiUrl('/api/track'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: location.pathname, sessionId: sid }) }).catch(() => {})
     } catch {}
   }, [])
 

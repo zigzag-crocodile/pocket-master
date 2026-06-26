@@ -11,3 +11,9 @@ npm-debug.log*
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Capacitor 打 App 临时目录
+/.mobile-build-tmp
+
+# cap sync 同步进 android 的前端产物（由 build:mobile 重新生成，不入库）
+/android/app/src/main/assets/public

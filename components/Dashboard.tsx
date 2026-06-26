@@ -10,6 +10,7 @@ import PermissionModal from '@/components/PermissionModal'
 import SchedulePanel from '@/components/SchedulePanel'
 import Logo from '@/components/Logo'
 import { mockData, SubAgent, MarketplaceTemplate, RepairLog } from '@/data/mock_data'
+import { apiUrl } from '@/lib/apiBase'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { loadSubagents, upsertSubagents, recordRun, recordRepair, recordExport, loadRepairLogs, computeLedger, appendHelperMemory, loadTodos, addTodo, updateTodo, deleteTodo, autoTitle, loadRecentActivity, Todo, RecentRun, AgentRow, LedgerData } from '@/lib/db'
 
@@ -173,7 +174,7 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
       const enabledHelpers = agents
         .filter((a) => a.is_enabled)
         .map((a) => ({ id: a.id, name: a.name, description: a.description }))
-      const res = await fetch('/api/agent', {
+      const res = await fetch(apiUrl('/api/agent'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input, permissionScope, enabledHelpers }),
