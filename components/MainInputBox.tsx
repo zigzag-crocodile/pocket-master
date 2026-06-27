@@ -47,6 +47,8 @@ export default function MainInputBox({ onSubmit, disabled }: Props) {
   const recRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const holdStartedRef = useRef(false)
   const stoppingRef = useRef(false)
   const pausedRef = useRef(false)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
@@ -57,6 +59,7 @@ export default function MainInputBox({ onSubmit, disabled }: Props) {
     setAudioSupported(!!SR || md)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current)
       try { recognitionRef.current?.stop() } catch {}
       try { recRef.current?.stream?.getTracks().forEach((t) => t.stop()) } catch {}
     }
@@ -241,6 +244,29 @@ export default function MainInputBox({ onSubmit, disabled }: Props) {
 
   const busy = disabled || fileBusy || recOpen
   const canSend = !busy && !!(value.trim() || attached)
+  const canRecord = audioSupported && !busy
+
+  const clearHoldTimer = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+  }
+
+  const beginInputHold = () => {
+    clearHoldTimer()
+    holdStartedRef.current = false
+    if (!canRecord) return
+    holdTimerRef.current = setTimeout(() => {
+      holdStartedRef.current = true
+      startRec()
+    }, 520)
+  }
+
+  const endInputHold = () => {
+    clearHoldTimer()
+    setTimeout(() => { holdStartedRef.current = false }, 0)
+  }
 
   return (
     <>
@@ -275,6 +301,11 @@ export default function MainInputBox({ onSubmit, disabled }: Props) {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPointerDown={beginInputHold}
+            onPointerUp={endInputHold}
+            onPointerCancel={endInputHold}
+            onPointerLeave={endInputHold}
+            onContextMenu={(e) => { if (holdStartedRef.current) e.preventDefault() }}
             placeholder={fileBusy ? '转写中…' : disabled ? '小当家处理中…' : placeholder}
             disabled={disabled}
             className="flex-1 min-w-0 bg-transparent text-[14px] text-ink outline-none placeholder:text-faint px-1"
@@ -282,7 +313,7 @@ export default function MainInputBox({ onSubmit, disabled }: Props) {
 
           {audioSupported && (
             <button
-              onClick={() => !busy && startRec()}
+              onClick={() => canRecord && startRec()}
               disabled={busy}
               aria-label="录音转文字"
               className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors disabled:opacity-40 text-sub hover:bg-white"

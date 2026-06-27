@@ -298,6 +298,10 @@ export interface HelperHistoryItem {
   isMock: boolean
 }
 
+export interface ConversationHistoryItem extends HelperHistoryItem {
+  taskType: string
+}
+
 // 从输入/输出自动生成一个简短标题
 export function autoTitle(input: string, output: string): string {
   const src = (input || output || '').replace(/[#>*`|_]/g, '').replace(/\s+/g, ' ').trim()
@@ -330,6 +334,37 @@ export async function loadHelperHistory(helperId: string): Promise<HelperHistory
       title: r.tasks?.title || autoTitle(input, output),
       input,
       output,
+      created_at: r.created_at,
+      status: r.main_agent_status || (r.success ? 'completed' : 'failed'),
+      isMock: r.is_mock,
+    }
+  })
+}
+
+export async function loadConversationHistory(limit = 50): Promise<ConversationHistoryItem[] | null> {
+  if (!supabase) return null
+  const run = async (taskSel: string) =>
+    supabase!
+      .from('agent_runs')
+      .select(`id, task_id, created_at, main_agent_status, is_mock, success, tasks(${taskSel})`)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  let { data, error } = await run('title, input_text, output_text, task_type')
+  if (error) ({ data, error } = await run('input_text, output_text, task_type'))
+  if (error) {
+    console.warn('[db] loadConversationHistory:', error.message)
+    return null
+  }
+  return (data || []).map((r: any) => {
+    const input = r.tasks?.input_text || ''
+    const output = r.tasks?.output_text || ''
+    return {
+      id: r.id,
+      taskId: r.task_id || null,
+      title: r.tasks?.title || autoTitle(input, output),
+      input,
+      output,
+      taskType: r.tasks?.task_type || 'unknown',
       created_at: r.created_at,
       status: r.main_agent_status || (r.success ? 'completed' : 'failed'),
       isMock: r.is_mock,

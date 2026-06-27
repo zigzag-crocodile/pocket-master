@@ -8,11 +8,13 @@ import RepairRoom from '@/components/RepairRoom'
 import OutputPanel from '@/components/OutputPanel'
 import PermissionModal from '@/components/PermissionModal'
 import SchedulePanel from '@/components/SchedulePanel'
+import ConversationSidebar from '@/components/ConversationSidebar'
 import Logo from '@/components/Logo'
 import { mockData, SubAgent, MarketplaceTemplate, RepairLog } from '@/data/mock_data'
 import { apiUrl } from '@/lib/apiBase'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import { loadSubagents, upsertSubagents, recordRun, recordRepair, recordExport, loadRepairLogs, computeLedger, appendHelperMemory, loadTodos, addTodo, updateTodo, deleteTodo, autoTitle, loadRecentActivity, Todo, RecentRun, AgentRow, LedgerData } from '@/lib/db'
+import { loadSubagents, upsertSubagents, recordRun, recordRepair, recordExport, loadRepairLogs, computeLedger, appendHelperMemory, loadTodos, addTodo, updateTodo, deleteTodo, autoTitle, loadRecentActivity, loadConversationHistory } from '@/lib/db'
+import type { Todo, RecentRun, AgentRow, LedgerData, ConversationHistoryItem } from '@/lib/db'
 
 type Tab = '我的小帮手' | '帮手集市' | '日程' | '修理室'
 
@@ -51,6 +53,9 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
   const [ledger, setLedger] = useState<LedgerData | null>(null)
   const [recentRuns, setRecentRuns] = useState<RecentRun[]>([])
   const [todos, setTodos] = useState<Todo[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [conversationHistory, setConversationHistory] = useState<ConversationHistoryItem[]>([])
 
   const installedIds = agents.map((a) => a.id)
 
@@ -59,13 +64,16 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     if (!supaMode) return
     let active = true
     ;(async () => {
-      const [subs, logs, led, tds, recent] = await Promise.all([loadSubagents(), loadRepairLogs(), computeLedger(), loadTodos(), loadRecentActivity()])
+      setHistoryLoading(true)
+      const [subs, logs, led, tds, recent, history] = await Promise.all([loadSubagents(), loadRepairLogs(), computeLedger(), loadTodos(), loadRecentActivity(), loadConversationHistory()])
       if (!active) return
       if (subs) setAgents(subs)
       if (logs) setRepairLogs(logs)
       if (led) setLedger(led)
       if (tds) setTodos(tds)
       if (recent) setRecentRuns(recent)
+      if (history) setConversationHistory(history)
+      setHistoryLoading(false)
     })()
     return () => { active = false }
   }, [supaMode])
@@ -119,6 +127,14 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     const [led, recent] = await Promise.all([computeLedger(), loadRecentActivity()])
     if (led) setLedger(led)
     if (recent) setRecentRuns(recent)
+  }, [supaMode])
+
+  const refreshHistory = useCallback(async () => {
+    if (!supaMode) return
+    setHistoryLoading(true)
+    const history = await loadConversationHistory()
+    if (history) setConversationHistory(history)
+    setHistoryLoading(false)
   }, [supaMode])
 
   const handleInstall = useCallback((template: MarketplaceTemplate) => {
@@ -250,6 +266,19 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
           errorMessage: data.errorMessage || null,
           latencyMs: Date.now() - startedAt,
         })
+      } else {
+        const now = new Date().toISOString()
+        setConversationHistory((prev) => [{
+          id: `local_${Date.now()}`,
+          taskId: null,
+          title: autoTitle(input, data.output),
+          input,
+          output: data.output,
+          taskType: data.taskType,
+          created_at: now,
+          status: data.isMock ? 'mock' : 'completed',
+          isMock: data.isMock,
+        }, ...prev].slice(0, 50))
       }
       if (data.isMock) {
         await pushRepair({
@@ -278,14 +307,27 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
       }
 
       await refreshLedger()
+      await refreshHistory()
     } catch {
       setAgentStatus('failed')
       if (supaMode) {
         const runId = await recordRun({ input, output: '', outputType: 'markdown', taskType: 'unknown', routeChain: ['小当家'], calledSubagents: [], modelUsed: '-', isMock: false, success: false, errorMessage: '网络请求失败', latencyMs: Date.now() - startedAt })
         await pushRepair({ run_id: runId, issue_type: 'model_error', issue_type_text: '模型失败', diagnosis: '网络请求失败，无法连接到 Agent 服务。', suggestion: '检查网络连接和服务是否正常运行。', can_auto_fix: false, fixed: false })
         await refreshLedger()
+        await refreshHistory()
       } else {
         await pushRepair({ issue_type: 'model_error', issue_type_text: '模型失败', diagnosis: '网络请求失败，无法连接到 Agent 服务。', suggestion: '检查网络连接和服务是否正常运行。', can_auto_fix: false, fixed: false })
+        setConversationHistory((prev) => [{
+          id: `local_${Date.now()}`,
+          taskId: null,
+          title: autoTitle(input, ''),
+          input,
+          output: '网络请求失败，无法连接到 Agent 服务。',
+          taskType: 'unknown',
+          created_at: new Date().toISOString(),
+          status: 'failed',
+          isMock: false,
+        }, ...prev].slice(0, 50))
       }
     } finally {
       setIsProcessing(false)
@@ -302,20 +344,25 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
     await runAgentFlow(pendingTask.input, scope)
   }
 
-  const handleInterrupt = () => {
-    setIsProcessing(false)
-    setAgentStatus('idle')
-    setRouteText('小当家 → 等待任务')
-    setHelperName(undefined)
-  }
-
   const unfixedCount = repairLogs.filter((r) => !r.fixed).length
 
   return (
     <div className="max-w-md mx-auto min-h-screen flex flex-col bg-white">
+      <ConversationSidebar open={sidebarOpen} items={conversationHistory} loading={historyLoading} onClose={() => setSidebarOpen(false)} />
+
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="w-8 h-8 -ml-1 flex items-center justify-center rounded-full text-sub hover:text-ink hover:bg-canvas transition-colors"
+            aria-label="打开对话记录"
+            title="对话记录"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <Logo size={28} />
           <span className="text-[15px] font-bold text-ink tracking-tight">随身小当家</span>
         </div>
@@ -339,7 +386,6 @@ export default function Dashboard({ userEmail, onSignOut }: Props) {
           routeText={routeText}
           helperName={helperName}
           isMock={isMock}
-          onInterrupt={isProcessing ? handleInterrupt : undefined}
         />
       </div>
 

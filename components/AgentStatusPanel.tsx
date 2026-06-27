@@ -29,10 +29,9 @@ interface Props {
   routeText: string
   helperName?: string
   isMock?: boolean
-  onInterrupt?: () => void
 }
 
-export default function AgentStatusPanel({ status, routeText, helperName, isMock, onInterrupt }: Props) {
+export default function AgentStatusPanel({ status, routeText, helperName, isMock }: Props) {
   const cfg = STATUS_MAP[status]
   const isActive = ['understanding', 'routing', 'subagent_running', 'generating'].includes(status)
   const isIdle = status === 'idle'
@@ -44,16 +43,6 @@ export default function AgentStatusPanel({ status, routeText, helperName, isMock
 
   return (
     <div className="bg-card rounded-3xl shadow-card px-5 pt-5 pb-4 rise flex flex-col items-center text-center">
-      {/* 中断按钮（右上角） */}
-      {isActive && onInterrupt && (
-        <button
-          onClick={onInterrupt}
-          className="self-end -mt-1 text-[11px] px-2.5 py-1 rounded-full text-bad font-medium transition-colors hover:bg-badsoft"
-        >
-          中断
-        </button>
-      )}
-
       {/* 居中放大的小当家 */}
       <div className="relative" style={{ width: 184, height: 184 }}>
         <div
